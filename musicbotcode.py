@@ -128,4 +128,4 @@ async def desconectar(ctx):
     else:
         await ctx.send("El bot no está conectado a un canal de voz.")
 
-bot.run('')
+bot.run('') 
