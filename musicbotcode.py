@@ -46,13 +46,25 @@ async def play_next(ctx):
 
                 voice = discord.utils.get(bot.voice_clients, guild=ctx.guild)
                 if voice:
-                    voice.play(audio_source, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop))
+                    def after_playing(error):
+                        if error:
+                            print(f"Error al reproducir: {error}")
+                        fut = asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop)
+                        try:
+                            fut.result()
+                        except Exception as e:
+                            print(f"Error al ejecutar play_next: {e}")
+
+                    voice.play(audio_source, after=after_playing)
 
                 await ctx.send(f"Reproduciendo: {track}")
 
             except Exception as e:
                 await ctx.send(f"No se pudo reproducir {track}: {str(e)}")
                 await play_next(ctx)  # Intenta reproducir la siguiente canción en caso de error
+
+        # Añadir un retraso antes de reproducir la siguiente canción
+        await asyncio.sleep(5)  # Ajusta el tiempo de espera según tus necesidades
 
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -67,6 +79,7 @@ async def on_voice_state_update(member, before, after):
             "`!pause`: Para pausar la canción actual.\n"
             "`!resume`: Para reanudar la canción actual.\n"
             "`!desconectar`: Para que el bot se desconecte del canal de voz.\n"
+            "`!cancel`: Para cancelar la lista de reproducción.\n"
         )
 
 @bot.command()
@@ -118,6 +131,15 @@ async def resume(ctx):
         await ctx.send("Canción reanudada.")
     else:
         await ctx.send("No hay ninguna canción pausada.")
+
+@bot.command()
+async def cancel(ctx):
+    global queue
+    queue = []
+    voice = discord.utils.get(bot.voice_clients, guild=ctx.guild)
+    if voice and voice.is_playing():
+        voice.stop()
+    await ctx.send("Lista de reproducción cancelada.")
 
 @bot.command()
 async def desconectar(ctx):
